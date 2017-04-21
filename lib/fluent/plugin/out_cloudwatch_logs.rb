@@ -11,6 +11,7 @@ module Fluent
 
     config_param :aws_key_id, :string, :default => nil, :secret => true
     config_param :aws_sec_key, :string, :default => nil, :secret => true
+    config_param :ecs_container_credentials_relative_uri, :string, :default => nil #Set with AWS_CONTAINER_CREDENTIALS_RELATIVE_URI environment variable value
     config_param :region, :string, :default => nil
     config_param :log_group_name, :string, :default => nil
     config_param :log_stream_name, :string, :default => nil
@@ -63,7 +64,14 @@ module Fluent
       super
 
       options = {}
-      options[:credentials] = Aws::Credentials.new(@aws_key_id, @aws_sec_key) if @aws_key_id && @aws_sec_key
+      if @ecs_container_credentials_relative_uri.nil?
+        options[:credentials] = Aws::Credentials.new(@aws_key_id, @aws_sec_key) if @aws_key_id && @aws_sec_key
+      else
+        options[:credentials] = Aws::ECSCredentials.new({
+          credential_path: @ecs_container_credentials_relative_uri
+        })
+      end
+
       options[:region] = @region if @region
       options[:http_proxy] = @http_proxy if @http_proxy
       @logs ||= Aws::CloudWatchLogs::Client.new(options)
